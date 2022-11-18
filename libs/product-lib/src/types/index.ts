@@ -16,7 +16,6 @@ export type Product = {
 
 export type CartItem = Product & {
     quantities: number;
-    totalPrice?: number;
 };
 
 export type ListProductsInCart = Array<CartItem>;
