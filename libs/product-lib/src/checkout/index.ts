@@ -1,96 +1,107 @@
-import { CartItem, Product, SpecialRule, ZCompanyEnum } from '../types'
+import { CheckoutItem, Product } from '../types'
 import { listSpecialRules } from '../seeds';
 import {
     CheckoutActionsCallback,
-    IncreaseCartItemQuantitiesParams,
-    DecreaseCartItemQuantitiesParams,
-    RemoveCartItemQuantitiesParams,
+    IncreaseCheckoutItemQuantitiesParams,
+    DecreaseCheckoutItemQuantitiesParams,
+    RemoveCheckoutItemQuantitiesParams,
     GetTotalParams
-} from './schemaTypes';
+} from './dto';
 
 
 export class Checkout {
-    cartItems: CartItem[]
+    checkoutItems: CheckoutItem[]
 
-    constructor(cartItems: CartItem[] = []) {
-        this.cartItems = cartItems
+    constructor(checkoutItems: CheckoutItem[] = []) {
+        this.checkoutItems = checkoutItems
     };
 
     /**
      * Add 1 product to cart
-     * @param cartItem  CartItem
+     * @param product  Product
      * @return void
      */
     add(product: Product, callback: CheckoutActionsCallback = () => { }): any {
         // check is this product id has been exists already in cart products list
-        const itemIndex = this.cartItems.findIndex((cartItem) => cartItem.id == product.id);
+        product = Product.parse(product);
 
-        // whether it's not exists => append new cartItem
+        const itemIndex = this.checkoutItems.findIndex((checkoutItem) => checkoutItem.id == product.id);
+
+        // whether it's not exists => append new checkoutItem
         if (itemIndex == -1) {
-            const cartItem: CartItem = {
+            const checkoutItem: CheckoutItem = {
                 ...product,
                 quantities: 1,
             }
-            this.cartItems.push(cartItem);
-            return callback(this.cartItems);
+
+            this.checkoutItems.push(checkoutItem);
+            return callback(this.checkoutItems);
         }
 
         // if the product has been exists =>  increase the quantities of that product's cart Item
         this.increase({ id: product.id, num: 1 });
-        return callback(this.cartItems);
+        return callback(this.checkoutItems);
+
     }
 
     /**
-     * Increase quantities of 1 CartItem by its id
-     * @param id        product/cartItem identity string
+     * Increase quantities of 1 CheckoutItem by its id
+     * @param id        product/checkoutItem identity string
      * @param num       num of quantities that will be increased
      * @return void
      */
-    increase({ id, num = 1 }: IncreaseCartItemQuantitiesParams, callback: CheckoutActionsCallback = () => { }) {
-        const itemIndex = this.cartItems.findIndex((cartItem) => cartItem.id == id);
+    increase(input: IncreaseCheckoutItemQuantitiesParams, callback: CheckoutActionsCallback = () => { }) {
+        const { id, num } = IncreaseCheckoutItemQuantitiesParams.parse(input);
+
+        const itemIndex = this.checkoutItems.findIndex((checkoutItem) => checkoutItem.id == id);
         if (itemIndex == -1) throw new Error('This item is no longer available');
-        this.cartItems[itemIndex].quantities += num;
-        return callback(this.cartItems);
+        this.checkoutItems[itemIndex].quantities += num;
+        return callback(this.checkoutItems);
     }
 
     /**
-     * decrease quantities of 1 CartItem by its id
-     * @param id        product/cartItem identity string
+     * decrease quantities of 1 CheckoutItem by its id
+     * @param id        product/checkoutItem identity string
      * @param num       num of quantities that will be decrased
      * @param callback  any callback function
      * @return void
      */
     decrease(
-        { id, num = 1 }: DecreaseCartItemQuantitiesParams,
+        input: DecreaseCheckoutItemQuantitiesParams,
         callback: CheckoutActionsCallback = () => { }
     ) {
-        const itemIndex = this.cartItems.findIndex((cartItem) => cartItem.id == id);
+        const { id, num } = IncreaseCheckoutItemQuantitiesParams.parse(input);
+
+        const itemIndex = this.checkoutItems.findIndex((checkoutItem) => checkoutItem.id === id);
+
         if (itemIndex == -1)
             throw new Error('This item is no longer available');
 
         // remove cart item completely if its quantites just have 1 left
-        if (this.cartItems[itemIndex].quantities == 1)
+        if (this.checkoutItems[itemIndex].quantities == 1)
             return this.remove({ id }, callback)
 
-        if (this.cartItems[itemIndex].quantities < num)
-            this.cartItems[itemIndex].quantities = 0;
+        if (this.checkoutItems[itemIndex].quantities < num)
+            this.checkoutItems[itemIndex].quantities = 0;
         else
-            this.cartItems[itemIndex].quantities -= num;
+            this.checkoutItems[itemIndex].quantities -= num;
 
-        return callback(this.cartItems)
+        return callback(this.checkoutItems)
     }
 
     /**
-     * Remove 1 CartItem by its id
-     * @param id        product/cartItem identity string
+     * Remove 1 CheckoutItem by its id
+     * @param id        product/checkoutItem identity string
      * @param callback  any callback function
      * @return void
      */
-    remove({ id }: RemoveCartItemQuantitiesParams, callback: CheckoutActionsCallback = () => { }) {
-        const itemIndex = this.cartItems.findIndex((cartItem) => cartItem.id == id);
+    remove(input: RemoveCheckoutItemQuantitiesParams, callback: CheckoutActionsCallback = () => { }) {
+        const { id } = RemoveCheckoutItemQuantitiesParams.parse(input);
+
+        const itemIndex = this.checkoutItems.findIndex((checkoutItem) => checkoutItem.id == id);
         if (itemIndex == -1) throw new Error('This item is no longer available');
-        this.cartItems = this.cartItems.filter(item => item.id !== id);
-        return callback(this.cartItems)
+        this.checkoutItems = this.checkoutItems.filter(item => item.id !== id);
+        return callback(this.checkoutItems)
     }
 
 
@@ -102,12 +113,14 @@ export class Checkout {
      * @param  company      customer's company
      * @return number   total money checkout
      */
-    total({ specialRules = listSpecialRules, company = null }: GetTotalParams): number {
-        return this.cartItems
+    total(input: GetTotalParams): number {
+        const { specialRules = listSpecialRules, company = null } = GetTotalParams.parse(input);
+
+        return this.checkoutItems
             .map(item => {
                 const productRules = specialRules
                     .filter(rule => rule.productId === item.id && (!rule.company || rule.company === company))
-                    .sort((ruleA, ruleB) => ruleA.discountPercentage > ruleB.discountPercentage ? 1 : -1);
+                    .sort((ruleA, ruleB) => ruleA.discountPercentage < ruleB.discountPercentage ? 1 : -1);
 
                 // if there is no applicable rules => normal total prices calculation
                 if (!productRules.length) return item.price * item.quantities;

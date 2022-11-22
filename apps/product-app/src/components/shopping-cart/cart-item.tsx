@@ -1,12 +1,12 @@
 import './styles.css'
 import { Card, Row, Col } from "react-bootstrap"
 import { useCheckoutStore } from '../../stores/checkout'
-import type { CartItem as CartItemType } from '@product-checkout-assigment/product-lib'
+import type { CheckoutItem as CheckoutItemType } from '@product-checkout-assigment/product-lib'
 
 interface IProps {
-    data: CartItemType
+    data: CheckoutItemType
 }
-export const CartItem = (props: IProps) => {
+export const CheckoutItem = (props: IProps) => {
     const { data } = props
 
     const checkoutState = useCheckoutStore();

@@ -7,18 +7,18 @@ export enum Company {
 }
 export const ZCompanyEnum = z.nativeEnum(Company)
 
-export type Product = {
-    id: string;
-    name: string;
-    description: string;
-    price: number;
-};
+export type Product = z.infer<typeof Product>
+export const Product = z.object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string(),
+    price: z.number().min(0),
+})
 
-export type CartItem = Product & {
-    quantities: number;
-};
+export const CheckoutItem = Product.merge(z.object({ quantities: z.number().min(1) }))
+export type CheckoutItem = z.infer<typeof CheckoutItem>
 
-export type ListProductsInCart = Array<CartItem>;
+export type ListProductsInCart = Array<CheckoutItem>;
 
 
 export const SpecialRule = z.object({
